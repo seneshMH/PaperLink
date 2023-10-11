@@ -33,6 +33,16 @@ const productSchema = new Schema({
         default: "pending",
         required: true
     },
+    rating: {
+        type: Number,
+        default: 0,
+        required: true
+    },
+    totalRatings: {
+        type: Number,
+        default: 0,
+        required: true
+    },
 }, {
     timestamps: true
 });
