@@ -1,7 +1,21 @@
 import express from "express";
 import authMiddleware from "../middleware/auth.middleware.js";
 
-import { createBankAccount, getStripePublishableKey, createPaymentDetails, getPaymentDetails, createStripeAccount, createStripeAccountLink, addBankAccountToStripeAccount, addCardToStripeAccount, transferMoneyToStripeAccount } from "../controllers/payment.controller.js";
+import {
+  createBankAccount,
+  getStripePublishableKey,
+  createPaymentDetails,
+  getPaymentDetails,
+  createStripeAccount,
+  createStripeAccountLink,
+  addBankAccountToStripeAccount,
+  addCardToStripeAccount,
+  transferMoneyToStripeAccount,
+  releasePaperOrderPaymentFromHold,
+  releaseBidPaymentFromHold,
+  refundPaperOrderPayment,
+  refundBidPayment,
+} from "../controllers/payment.controller.js";
 
 const router = express.Router();
 
@@ -14,5 +28,9 @@ router.post("/create-stripe-account-link", authMiddleware, createStripeAccountLi
 router.post("/add-bank-account-to-stripe-account", authMiddleware, addBankAccountToStripeAccount);
 router.post("/add-card-to-stripe-account", authMiddleware, addCardToStripeAccount);
 router.post("/transfer-money-to-stripe-account", authMiddleware, transferMoneyToStripeAccount);
+router.post("/release-paper-order-payment", authMiddleware, releasePaperOrderPaymentFromHold);
+router.post("/release-bid-payment", authMiddleware, releaseBidPaymentFromHold);
+router.post("/refund-paper-order-payment", authMiddleware, refundPaperOrderPayment);
+router.post("/refund-bid-payment", authMiddleware, refundBidPayment);
 
 export default router;

@@ -1,6 +1,16 @@
 import { Server } from "socket.io";
 
-const setupSocketIO = (server) => {
+let socket_io;
+
+export const getSocket = () => {
+    return socket_io;
+};
+
+const setSocket = (io) => {
+    socket_io = io;
+};
+
+export const setupSocketIO = (server) => {
     const io = new Server(server, {
         pingTimeout: 60000,
         cors: {
@@ -11,6 +21,7 @@ const setupSocketIO = (server) => {
 
     io.on("connection", (socket) => {
         console.log("connected to socket.io");
+        setSocket(socket);
 
         socket.on("setup_conversation", (conversationID) => {
             socket.join(conversationID);
@@ -24,7 +35,6 @@ const setupSocketIO = (server) => {
         });
 
         socket.on("new_notification", ({ userId, notification }) => {
-            console.log(notification)
             socket.to(userId).emit("new_notification", notification);
         });
 
@@ -82,5 +92,3 @@ const setupSocketIO = (server) => {
         });
     });
 };
-
-export default setupSocketIO;

@@ -12,7 +12,7 @@ import productOrderRoute from "./routes/product.order.route.js";
 import paymentRoute from "./routes/payment.route.js";
 import mailRoute from "./routes/mail.route.js";
 
-import setupSocketIO from "./sockets/socket.js";
+import { setupSocketIO } from "./sockets/socket.js";
 
 const app = express();
 dotenv.config();
@@ -37,8 +37,7 @@ app.use("/api/mails", mailRoute);
 const port = process.env.PORT || 5000;
 
 const server = app.listen(port, () => {
-	setupSocketIO(server);
-	connect();
-	console.log(`Backend server is running on port ${port}`);
+    setupSocketIO(server);
+    connect();
+    console.log(`Backend server is running on port ${port}`);
 });
-

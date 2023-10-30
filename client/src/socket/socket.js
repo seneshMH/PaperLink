@@ -1,4 +1,5 @@
-import { socket } from './socket.instance.js';
+import { AddNotification } from "../apiCalls/notifications.js";
+import { socket } from "./socket.instance.js";
 
 export const setupJoin = (userID) => {
     socket.connect();
@@ -46,9 +47,7 @@ export const setupNewMessageListener = (setMessages) => {
 
 export const setupDeleteMessageListener = (setMessages) => {
     socket.on("delete_message", (messageId) => {
-        setMessages((prevMessages) =>
-            prevMessages.filter((message) => message._id !== messageId)
-        );
+        setMessages((prevMessages) => prevMessages.filter((message) => message._id !== messageId));
     });
 };
 
@@ -72,7 +71,7 @@ export const emitNewMessage = (messageData) => {
 //emit delete message to the server
 export const emitDeleteMessage = (payload) => {
     socket.emit("delete_message", payload);
-}
+};
 
 //emit a bid to the server
 export const emitAddBid = (bidData) => {
@@ -95,8 +94,9 @@ export const emitStopTyping = (payload) => {
 };
 
 //emit new notification to the server
-export const emitNewNotification = (notificationData) => {
+export const emitNewNotification = async (notificationData) => {
     socket.emit("new_notification", notificationData);
+    await AddNotification(notificationData);
 };
 
 //disconnect socket

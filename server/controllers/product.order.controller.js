@@ -1,10 +1,10 @@
-import stripe from "../config/stripe.config.js"
-import axios from "axios";
-
+import stripe from "../config/stripe.config.js";
 import ProductOrder from "../models/product.order.model.js";
 import Product from "../models/product.model.js";
 import TempProductOrder from "../models/temp.product.order.model.js";
-
+import Payment from "../models/payment.model.js";
+import Notification from "../models/notification.model.js";
+import { getSocket } from "../sockets/socket.js";
 
 //get stripe public key
 export const getStripePublicKey = async (req, res) => {
@@ -13,12 +13,12 @@ export const getStripePublicKey = async (req, res) => {
         res.send({
             success: true,
             message: "Stripe public key fetched successfully",
-            data: process.env.STRIPE_PUBLISHABLE_KEY
+            data: process.env.STRIPE_PUBLISHABLE_KEY,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -26,7 +26,6 @@ export const getStripePublicKey = async (req, res) => {
 //create payment intent
 export const createPaymentIntent = async (req, res) => {
     try {
-
         if (!req.body.amount) {
             throw new Error("Amount not found");
         }
@@ -44,13 +43,12 @@ export const createPaymentIntent = async (req, res) => {
         res.send({
             success: true,
             message: "Payment intent created successfully",
-            data: paymentIntent
+            data: paymentIntent,
         });
     } catch (error) {
-
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -58,7 +56,6 @@ export const createPaymentIntent = async (req, res) => {
 //create product order
 export const createProductOrder = async (req, res) => {
     try {
-
         const { product, buyer, price, quantity } = req.body;
 
         if (!product || !buyer || !price || !quantity) {
@@ -70,19 +67,19 @@ export const createProductOrder = async (req, res) => {
             product,
             buyer,
             price,
-            quantity
+            quantity,
         });
 
         //send response
         res.send({
             success: true,
             message: "Product order created successfully",
-            data: productOrder
+            data: productOrder,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -96,12 +93,12 @@ export const getProductOrders = async (req, res) => {
         res.send({
             success: true,
             message: "Product orders fetched successfully",
-            data: productOrders
+            data: productOrders,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -109,31 +106,31 @@ export const getProductOrders = async (req, res) => {
 //get product order by buyer
 export const getProductOrderByBuyer = async (req, res) => {
     try {
-
         if (!req.params.id) {
             throw new Error("Buyer id not found");
         }
 
-        const productOrders = await ProductOrder.find({ buyer: req.params.id }).populate("product").populate({
-            path: "product",
-            populate: {
-                path: "seller",
-                model: "User" // Replace "Seller" with the actual model name for the seller
-            }
-        }).populate("buyer");
-
-
+        const productOrders = await ProductOrder.find({ buyer: req.params.id })
+            .populate("product")
+            .populate({
+                path: "product",
+                populate: {
+                    path: "seller",
+                    model: "User", // Replace "Seller" with the actual model name for the seller
+                },
+            })
+            .populate("buyer");
 
         //send response
         res.send({
             success: true,
             message: "Product orders fetched successfully",
-            data: productOrders
+            data: productOrders,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -146,15 +143,15 @@ export const getProductOrderBySeller = async (req, res) => {
         }
 
         // Find product orders where the seller matches the given seller id
-        const productOrders = await ProductOrder.find({}).populate({
-            path: "product",
-            match: { seller: req.params.id }, // Filter by seller id
-        }).populate("buyer");
+        const productOrders = await ProductOrder.find({})
+            .populate({
+                path: "product",
+                match: { seller: req.params.id }, // Filter by seller id
+            })
+            .populate("buyer");
 
         // Filter out product orders where the product field is null (no matching product found)
-        const filteredProductOrders = productOrders.filter(
-            (order) => order.product !== null
-        );
+        const filteredProductOrders = productOrders.filter((order) => order.product !== null);
 
         // Send response
         res.send({
@@ -173,7 +170,6 @@ export const getProductOrderBySeller = async (req, res) => {
 //delete product order
 export const deleteProductOrder = async (req, res) => {
     try {
-
         if (!req.params.id) {
             throw new Error("Product order id not found");
         }
@@ -183,20 +179,19 @@ export const deleteProductOrder = async (req, res) => {
         //send response
         res.send({
             success: true,
-            message: "Product order deleted successfully"
+            message: "Product order deleted successfully",
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
 
-//change product order status 
+//change product order status
 export const changeProductOrderStatus = async (req, res) => {
     try {
-
         const { status } = req.body;
 
         if (!req.params.id) {
@@ -210,17 +205,15 @@ export const changeProductOrderStatus = async (req, res) => {
         //find by id and update
         const response = await ProductOrder.findByIdAndUpdate(req.params.id, { status: status });
 
-
         //send response
         res.send({
             success: true,
-            message: "Product order status updated successfully"
+            message: "Product order status updated successfully",
         });
-
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -228,7 +221,6 @@ export const changeProductOrderStatus = async (req, res) => {
 //create checkout session
 export const createCheckoutSession = async (req, res) => {
     try {
-
         const { items, userId } = req.body;
 
         if (!items || !userId) {
@@ -236,34 +228,38 @@ export const createCheckoutSession = async (req, res) => {
         }
 
         //find product by id
-        const products = await Promise.all(items.map(async (item) => {
-            const product = await Product.findById(item.product);
+        const products = await Promise.all(
+            items.map(async (item) => {
+                const product = await Product.findById(item.product);
 
-            if (!product) {
-                throw new Error(`Product not found for ID: ${item.product}`);
-            }
+                if (!product) {
+                    throw new Error(`Product not found for ID: ${item.product}`);
+                }
 
-            return { product, quantity: item.quantity };
-        }));
+                return { product, quantity: item.quantity };
+            })
+        );
 
         let productOrderIds = [];
         //save product orders
-        await Promise.all(products.map(async (item) => {
-            const productOrder = await ProductOrder.create({
-                product: item.product._id,
-                buyer: userId,
-                price: item.product.price,
-                quantity: item.quantity
-            });
+        await Promise.all(
+            products.map(async (item) => {
+                const productOrder = await ProductOrder.create({
+                    product: item.product._id,
+                    buyer: userId,
+                    price: item.product.price,
+                    quantity: item.quantity,
+                });
 
-            productOrderIds.push(productOrder._id);
+                productOrderIds.push(productOrder._id);
 
-            return productOrder;
-        }));
+                return productOrder;
+            })
+        );
 
         //create temp product order
         const tempProductOrder = await TempProductOrder.create({
-            orders: productOrderIds
+            orders: productOrderIds,
         });
 
         const lineItems = products.map((item) => {
@@ -278,15 +274,14 @@ export const createCheckoutSession = async (req, res) => {
                     unit_amount: unitAmount,
                 },
                 quantity: item.quantity,
-            }
+            };
         });
 
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
             mode: "payment",
             line_items: lineItems,
-            customer_email: 'customer@example.com', // Associate with the customer's email
-
+            //customer_email: "customer@example.com", // Associate with the customer's email
 
             success_url: `${process.env.CLIENT_URL}/order/success/${tempProductOrder._id}`,
             cancel_url: `${process.env.CLIENT_URL}/order/cancel/${tempProductOrder._id}`,
@@ -296,12 +291,12 @@ export const createCheckoutSession = async (req, res) => {
         res.send({
             success: true,
             message: "Checkout session created successfully",
-            data: session.url
+            data: session.url,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -309,7 +304,6 @@ export const createCheckoutSession = async (req, res) => {
 //cancle order
 export const cancelOrder = async (req, res) => {
     try {
-
         const id = req.params.id;
 
         if (!id) {
@@ -325,9 +319,11 @@ export const cancelOrder = async (req, res) => {
         }
 
         //delete product orders
-        await Promise.all(tempProductOrder.orders.map(async (item) => {
-            await ProductOrder.findByIdAndDelete(item);
-        }));
+        await Promise.all(
+            tempProductOrder.orders.map(async (item) => {
+                await ProductOrder.findByIdAndDelete(item);
+            })
+        );
 
         //find by id and update
         await TempProductOrder.findByIdAndDelete(id);
@@ -335,13 +331,12 @@ export const cancelOrder = async (req, res) => {
         //send response
         res.send({
             success: true,
-            message: "Order canceled successfully"
+            message: "Order canceled successfully",
         });
-
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -355,18 +350,63 @@ export const orderSuccess = async (req, res) => {
             throw new Error("Order id not found");
         }
 
+        //find temp product order
+        const tempProductOrder = await TempProductOrder.findById(id);
+
+        if (!tempProductOrder) {
+            throw new Error("Order not found");
+        }
+
+        const orders = tempProductOrder.orders;
+
+        //get all product orders
+        await Promise.all(
+            orders.map(async (orderId) => {
+                const order = await ProductOrder.findById(orderId).populate("product");
+
+                if (!order) {
+                    throw new Error("order not found");
+                }
+
+                let payment = await Payment.findOne({ user: order.product.seller });
+
+                if (!payment) {
+                    payment = await Payment.create({ user: order.product.seller });
+                }
+
+                payment.hold += order.price * order.quantity;
+
+                await payment.save();
+
+                //send notification to seller
+                const notification = {
+                    title: "New Order",
+                    message: `You have a new order for ${order.product.name}`,
+                    onClick: "",
+                    user: order.product.seller,
+                    read: false,
+                };
+
+                getSocket()
+                    .to(order.product.seller.toString())
+                    .emit("new_notification", notification);
+
+                await Notification.create(notification);
+            })
+        );
+
         //delete temp product order
         await TempProductOrder.findByIdAndDelete(id);
 
         //send response
         res.send({
             success: true,
-            message: "Order success"
+            message: "Order success",
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };

@@ -2,6 +2,10 @@ import stripe from "../config/stripe.config.js";
 import Payment from "../models/payment.model.js";
 import User from "../models/user.model.js";
 import Bank from "../models/bank.model.js";
+import ProductOrder from "../models/product.order.model.js";
+import Bid from "../models/bid.model.js";
+import { getSocket } from "../sockets/socket.js";
+import Notification from "../models/notification.model.js";
 
 //get stripe public key
 export const getStripePublishableKey = async (req, res) => {
@@ -10,12 +14,12 @@ export const getStripePublishableKey = async (req, res) => {
         res.send({
             success: true,
             message: "Stripe public key fetched successfully",
-            data: process.env.STRIPE_PUBLISHABLE_KEY
+            data: process.env.STRIPE_PUBLISHABLE_KEY,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -35,7 +39,7 @@ export const createPaymentDetails = async (req, res) => {
         //create stripe account
         const account = await stripe.accounts.create({
             type: "express",
-            country: 'US',
+            country: "US",
             email: user.email,
             capabilities: {
                 card_payments: { requested: true },
@@ -59,13 +63,13 @@ export const createPaymentDetails = async (req, res) => {
         res.send({
             success: true,
             message: "Payment details saved successfully",
-            data: savedPaymentDetails
+            data: savedPaymentDetails,
         });
     } catch (error) {
-        console.log(error.message)
+        console.log(error.message);
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -81,21 +85,19 @@ export const getPaymentDetails = async (req, res) => {
 
         //find payment details by user id
         const paymentDetails = await Payment.findOne({
-            user: userId
-        }).populate(
-            "bank"
-        );
+            user: userId,
+        }).populate("bank");
 
         //send response
         res.send({
             success: true,
             message: "Payment details retrieved successfully",
-            data: paymentDetails
+            data: paymentDetails,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -105,7 +107,13 @@ export const createBankAccount = async (req, res) => {
     try {
         const { account, userId } = req.body;
 
-        if (!account.account_number || !account.currency || !account.country || !account.account_holder_name || !userId) {
+        if (
+            !account.account_number ||
+            !account.currency ||
+            !account.country ||
+            !account.account_holder_name ||
+            !userId
+        ) {
             throw new Error("Required fields not found");
         }
 
@@ -115,24 +123,21 @@ export const createBankAccount = async (req, res) => {
         let bankAccount = paymentDetails.bank;
 
         // Set the correct object type for bank account
-        account.object = 'bank_account';
+        account.object = "bank_account";
 
         // If bank account does not exist
         if (!bankAccount) {
             // Create bank account
-            const response = await stripe.accounts.createExternalAccount(
-                paymentDetails.stripeId,
-                {
-                    external_account: {
-                        object: 'bank_account', // Set the correct object type
-                        account_holder_name: account.account_holder_name,
-                        account_number: account.account_number,
-                        currency: account.currency,
-                        country: account.country,
-                        routing_number: account.routing_number
-                    },
-                }
-            );
+            const response = await stripe.accounts.createExternalAccount(paymentDetails.stripeId, {
+                external_account: {
+                    object: "bank_account", // Set the correct object type
+                    account_holder_name: account.account_holder_name,
+                    account_number: account.account_number,
+                    currency: account.currency,
+                    country: account.country,
+                    routing_number: account.routing_number,
+                },
+            });
 
             if (response.error) {
                 throw new Error(response.error.message);
@@ -152,35 +157,32 @@ export const createBankAccount = async (req, res) => {
             paymentDetails.bank.stripeId = response.id;
             await paymentDetails.save();
         } else {
-            console.log(paymentDetails)
+            console.log(paymentDetails);
             // Delete the existing bank account
-            let response = await stripe.accounts.deleteExternalAccount(paymentDetails.stripeId, paymentDetails.bank.stripeId);
-
-            if (response.error) {
-                throw new Error(response.error.message);
-            }
-
-
-            // Create a new bank account
-            response = await stripe.accounts.createExternalAccount(
+            let response = await stripe.accounts.deleteExternalAccount(
                 paymentDetails.stripeId,
-                {
-                    external_account: {
-                        account_holder_name: account.account_holder_name,
-                        object: 'bank_account', // Set the correct object type
-                        account_number: account.account_number,
-                        currency: account.currency,
-                        country: account.country,
-                        routing_number: account.routing_number
-                    },
-                }
+                paymentDetails.bank.stripeId
             );
 
             if (response.error) {
                 throw new Error(response.error.message);
             }
 
+            // Create a new bank account
+            response = await stripe.accounts.createExternalAccount(paymentDetails.stripeId, {
+                external_account: {
+                    account_holder_name: account.account_holder_name,
+                    object: "bank_account", // Set the correct object type
+                    account_number: account.account_number,
+                    currency: account.currency,
+                    country: account.country,
+                    routing_number: account.routing_number,
+                },
+            });
 
+            if (response.error) {
+                throw new Error(response.error.message);
+            }
 
             // Update the existing bank account document
             account.stripeId = response.id;
@@ -201,7 +203,6 @@ export const createBankAccount = async (req, res) => {
     }
 };
 
-
 //create stripe account
 export const createStripeAccount = async (req, res) => {
     try {
@@ -213,7 +214,7 @@ export const createStripeAccount = async (req, res) => {
 
         const account = await stripe.accounts.create({
             type: "express",
-            country: 'LK',
+            country: "LK",
             email,
             capabilities: {
                 card_payments: { requested: true },
@@ -225,12 +226,12 @@ export const createStripeAccount = async (req, res) => {
         res.send({
             success: true,
             message: "Stripe account created successfully",
-            data: account
+            data: account,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -250,12 +251,12 @@ export const retrieveStripeAccount = async (req, res) => {
         res.send({
             success: true,
             message: "Stripe account retrieved successfully",
-            data: account
+            data: account,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -271,21 +272,21 @@ export const createStripeAccountLink = async (req, res) => {
 
         const accountLink = await stripe.accountLinks.create({
             account: account_id,
-            refresh_url: 'https://example.com/reauth',
-            return_url: 'https://example.com/return',
-            type: 'account_onboarding',
+            refresh_url: "https://example.com/reauth",
+            return_url: "https://example.com/return",
+            type: "account_onboarding",
         });
 
         //send response
         res.send({
             success: true,
             message: "Stripe account link created successfully",
-            data: accountLink
+            data: accountLink,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -299,23 +300,20 @@ export const addBankAccountToStripeAccount = async (req, res) => {
             throw new Error("Account id or bank account not found");
         }
 
-        const bankAccount = await stripe.accounts.createExternalAccount(
-            account_id,
-            {
-                external_account: bank_account,
-            }
-        );
+        const bankAccount = await stripe.accounts.createExternalAccount(account_id, {
+            external_account: bank_account,
+        });
 
         //send response
         res.send({
             success: true,
             message: "Bank account added to stripe account successfully",
-            data: bankAccount
+            data: bankAccount,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -329,23 +327,20 @@ export const addCardToStripeAccount = async (req, res) => {
             throw new Error("Account id or card not found");
         }
 
-        const cardDetails = await stripe.accounts.createExternalAccount(
-            account_id,
-            {
-                external_account: card,
-            }
-        );
+        const cardDetails = await stripe.accounts.createExternalAccount(account_id, {
+            external_account: card,
+        });
 
         //send response
         res.send({
             success: true,
             message: "Card added to stripe account successfully",
-            data: cardDetails
+            data: cardDetails,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -361,7 +356,7 @@ export const transferMoneyToStripeAccount = async (req, res) => {
 
         const transfer = await stripe.transfers.create({
             amount: amount,
-            currency: 'LKR',
+            currency: "LKR",
             destination: account_id,
         });
 
@@ -369,13 +364,260 @@ export const transferMoneyToStripeAccount = async (req, res) => {
         res.send({
             success: true,
             message: "Money transfered to stripe account successfully",
-            data: transfer
+            data: transfer,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
 
+//release paper order payment from hold
+export const releasePaperOrderPaymentFromHold = async (req, res) => {
+    try {
+        const { orderId } = req.body;
+
+        if (!orderId) {
+            throw new Error("order not found");
+        }
+
+        const order = await ProductOrder.findById(orderId).populate("product");
+
+        if (!order) {
+            throw new Error("order not found");
+        }
+
+        let payment = await Payment.findOne({ user: order.product.seller });
+
+        if (!payment) {
+            payment = await Payment.create({ user: order.product.seller });
+        }
+
+        payment.hold -= order.price * order.quantity;
+        payment.fund += order.price * order.quantity;
+
+        await payment.save();
+
+        order.status = "completed";
+
+        await order.save();
+
+        //send notification to seller
+        const notification = {
+            title: "Payment released",
+            message: `For Order ${order._id} payment released successfully`,
+            onClick: "",
+            user: order.buyer,
+            read: false,
+        };
+
+        getSocket().to(order.product.seller).emit("new_notification", notification);
+
+        await Notification.create(notification);
+
+        //send response
+        res.send({
+            success: true,
+            message: "Payment released successfully",
+        });
+    } catch (error) {
+        res.send({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+//relase bid payment from hold
+export const releaseBidPaymentFromHold = async (req, res) => {
+    try {
+        const { bidId } = req.body;
+
+        if (!bidId) {
+            throw new Error("Bid not found");
+        }
+
+        const bid = await Bid.findById(bidId);
+
+        if (!bid) {
+            throw new Error("Bid not found");
+        }
+
+        let payment = await Payment.findOne({ user: bid.seller });
+
+        if (!payment) {
+            payment = await Payment.create({ user: bid.seller });
+        }
+
+        payment.hold -= bid.bidAmount;
+        payment.fund += bid.bidAmount;
+
+        await payment.save();
+
+        bid.status = "completed";
+
+        await bid.save();
+
+        //send notification to seller
+        const notification = {
+            title: "Payment released",
+            message: `For Bid ${bid._id} payment released successfully`,
+            onClick: "",
+            user: bid.buyer,
+            read: false,
+        };
+
+        getSocket().to(bid.seller).emit("new_notification", notification);
+
+        await Notification.create(notification);
+
+        //send response
+        res.send({
+            success: true,
+            message: "Payment released successfully",
+        });
+    } catch (error) {
+        res.send({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+//refund paper order payment
+export const refundPaperOrderPayment = async (req, res) => {
+    try {
+        const { orderId } = req.body;
+
+        if (!orderId) {
+            throw new Error("order not found");
+        }
+
+        const order = await ProductOrder.findById(orderId).populate("product");
+
+        if (!order) {
+            throw new Error("order not found");
+        }
+
+        let payment = await Payment.findOne({ user: order.buyer });
+
+        if (!payment) {
+            payment = await Payment.create({ user: order.buyer });
+        }
+
+        payment.fund += order.price * order.quantity;
+
+        await payment.save();
+
+        order.status = "refunded";
+
+        await order.save();
+
+        //send notification to buyer
+        const notification = {
+            title: "Payment refunded",
+            message: `For Order ${order._id} payment refunded successfully`,
+            onClick: "",
+            user: order.buyer,
+            read: false,
+        };
+
+        getSocket().to(order.buyer).emit("new_notification", notification);
+
+        await Notification.create(notification);
+
+        //send notification to seller
+        const notification2 = {
+            title: "Payment refunded",
+            message: `For Order ${order._id} payment refunded`,
+            onClick: "",
+            user: order.product.seller,
+            read: false,
+        };
+
+        getSocket().to(order.product.seller).emit("new_notification", notification2);
+
+        await Notification.create(notification2);
+
+        //send response
+        res.send({
+            success: true,
+            message: "Payment refunded successfully",
+        });
+    } catch (error) {
+        res.send({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+//refund bid payment
+export const refundBidPayment = async (req, res) => {
+    try {
+        const { bidId } = req.body;
+
+        if (!bidId) {
+            throw new Error("Bid not found");
+        }
+
+        const bid = await Bid.findById(bidId);
+
+        if (!bid) {
+            throw new Error("Bid not found");
+        }
+
+        let payment = await Payment.findOne({ user: bid.buyer });
+
+        if (!payment) {
+            payment = await Payment.create({ user: bid.buyer });
+        }
+
+        payment.fund += bid.bidAmount;
+
+        await payment.save();
+
+        bid.status = "refunded";
+
+        await bid.save();
+
+        //send notification to buyer
+        const notification = {
+            title: "Payment refunded",
+            message: `For Bid ${bid._id} payment refunded successfully`,
+            onClick: "",
+            user: bid.buyer,
+            read: false,
+        };
+
+        getSocket().to(bid.buyer).emit("new_notification", notification);
+
+        await Notification.create(notification);
+
+        //send notification to seller
+        const notification2 = {
+            title: "Payment refunded",
+            message: `For Bid ${bid._id} payment refunded`,
+            onClick: "",
+            user: bid.seller,
+            read: false,
+        };
+
+        getSocket().to(bid.seller).emit("new_notification", notification2);
+
+        await Notification.create(notification2);
+
+        //send response
+        res.send({
+            success: true,
+            message: "Payment refunded successfully",
+        });
+    } catch (error) {
+        res.send({
+            success: false,
+            message: error.message,
+        });
+    }
+};

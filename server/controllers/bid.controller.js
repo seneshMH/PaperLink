@@ -1,7 +1,7 @@
-import stripe from "../config/stripe.config.js"
-import Bid from '../models/bid.model.js';
-import Notification from '../models/notification.model.js';
-import User from '../models/user.model.js';
+import stripe from "../config/stripe.config.js";
+import Bid from "../models/bid.model.js";
+import Notification from "../models/notification.model.js";
+import User from "../models/user.model.js";
 
 //add new bid
 export const addBid = async (req, res) => {
@@ -26,12 +26,12 @@ export const addBid = async (req, res) => {
         res.send({
             success: true,
             message: "Bid added successfully",
-            data: bid
+            data: bid,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -47,17 +47,19 @@ export const getBidsByBuyer = async (req, res) => {
         }
 
         //find bid by buyer id and paid status
-        const bids = await Bid.find({ buyer: buyerId, paid: true }).populate('advertisement').populate('seller');
+        const bids = await Bid.find({ buyer: buyerId, paid: true })
+            .populate("advertisement")
+            .populate("seller");
 
         //send response
         res.send({
             success: true,
-            data: bids
+            data: bids,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -83,20 +85,19 @@ export const getAllBids = async (req, res) => {
         }
 
         const bids = await Bid.find(filters)
-            .populate('advertisement')
-            .populate('buyer')
-            .populate('seller')
+            .populate("advertisement")
+            .populate("buyer")
+            .populate("seller")
             .sort({ createdAt: -1 });
 
         res.send({
             success: true,
-            data: bids
+            data: bids,
         });
-
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -110,12 +111,12 @@ export const deleteBid = async (req, res) => {
         //send response
         res.send({
             success: true,
-            message: "Bid deleted successfully"
+            message: "Bid deleted successfully",
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -123,24 +124,24 @@ export const deleteBid = async (req, res) => {
 //change bid status
 export const changeBidStatus = async (req, res) => {
     try {
-        const { bidId, status } = req.body;
+        const { id, status } = req.body;
 
-        if (!bidId || !status) {
+        if (!id || !status) {
             throw new Error("Bid details not found");
         }
 
         //find bid by id and update status
-        await Bid.findByIdAndUpdate(bidId, { status: status });
+        await Bid.findByIdAndUpdate(id, { status: status });
 
         //send response
         res.send({
             success: true,
-            message: "Bid status updated successfully"
+            message: "Bid status updated successfully",
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
@@ -165,22 +166,19 @@ export const changeBidPaidStatus = async (req, res) => {
         //send response
         res.send({
             success: true,
-            message: "Bid payment successfull"
+            message: "Bid payment successfull",
         });
-
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
-
 };
 
 //create checkout session
 export const createCheckoutSession = async (req, res) => {
     try {
-
         const { bidId, userId } = req.body;
 
         if (!bidId || !userId) {
@@ -195,16 +193,18 @@ export const createCheckoutSession = async (req, res) => {
         }
 
         const unitAmount = Math.round(parseFloat(bid.bidAmount) * 100);
-        const lineItems = [{
-            price_data: {
-                currency: "lkr",
-                product_data: {
-                    name: "Bid",
+        const lineItems = [
+            {
+                price_data: {
+                    currency: "lkr",
+                    product_data: {
+                        name: "Bid",
+                    },
+                    unit_amount: unitAmount,
                 },
-                unit_amount: unitAmount,
+                quantity: "1",
             },
-            quantity: "1",
-        }];
+        ];
 
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
@@ -219,12 +219,63 @@ export const createCheckoutSession = async (req, res) => {
         res.send({
             success: true,
             message: "Checkout session created successfully",
-            data: session.url
+            data: session.url,
         });
     } catch (error) {
         res.send({
             success: false,
-            message: error.message
+            message: error.message,
+        });
+    }
+};
+
+//get payid bids
+export const getPaidBids = async (req, res) => {
+    try {
+        //find bid by buyer id and paid status
+        const bids = await Bid.find({ paid: true })
+            .populate("advertisement")
+            .populate("seller")
+            .populate("buyer");
+
+        //send response
+        res.send({
+            success: true,
+            data: bids,
+        });
+    } catch (error) {
+        res.send({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+//get paid bid by seller
+export const getPaidBidsBySeller = async (req, res) => {
+    try {
+        //get seller id
+        const sellerId = req.params.id;
+
+        if (!sellerId) {
+            throw new Error("Seller details not found");
+        }
+
+        //find bid by buyer id and paid status
+        const bids = await Bid.find({ seller: sellerId, paid: true })
+            .populate("advertisement")
+            .populate("seller")
+            .populate("buyer");
+
+        //send response
+        res.send({
+            success: true,
+            data: bids,
+        });
+    } catch (error) {
+        res.send({
+            success: false,
+            message: error.message,
         });
     }
 };
