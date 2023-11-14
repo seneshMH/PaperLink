@@ -1,7 +1,10 @@
-import { io } from 'socket.io-client';
+import { io } from "socket.io-client";
+import dotenv from "dotenv";
 
-const ENDPOINT = "http://localhost:5000";
+dotenv.config();
+
+const ENDPOINT = process.env.PORT;
 
 export const socket = io(ENDPOINT, {
-    autoConnect: false
+    autoConnect: false,
 });
