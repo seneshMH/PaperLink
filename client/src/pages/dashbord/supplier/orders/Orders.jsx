@@ -23,7 +23,7 @@ import { useMessage } from "../../../../hooks/message/Message";
 import moment from "moment";
 import { useDispatch, useSelector } from "react-redux";
 import { SetLoader } from "../../../../redux/loaderSlice";
-import { ChangeBidStatus, GetPaidBidsBySellerId, changeBidStatus } from "../../../../apiCalls/bids";
+import { ChangeBidStatus, GetPaidBidsBySellerId } from "../../../../apiCalls/bids";
 
 function Orders() {
     const [bids, setBids] = useState();

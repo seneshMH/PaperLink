@@ -36,24 +36,9 @@ export const createPaymentDetails = async (req, res) => {
         //get user by id
         const user = User.findById(userId);
 
-        //create stripe account
-        const account = await stripe.accounts.create({
-            type: "express",
-            country: "US",
-            email: user.email,
-            capabilities: {
-                card_payments: { requested: true },
-                transfers: { requested: true },
-            },
-            // tos_acceptance: {
-            //     service_agreement: 'recipient',
-            // },
-        });
-
         //create payment details
         const paymentDetails = new Payment({
             user: userId,
-            stripeId: account.id,
         });
 
         //save payment details
@@ -67,6 +52,32 @@ export const createPaymentDetails = async (req, res) => {
         });
     } catch (error) {
         console.log(error.message);
+        res.send({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+//get payment details by user id
+export const getPaymentDetailsByUserId = async (req, res) => {
+    try {
+        const { id } = req.body;
+
+        if (!id) {
+            throw new Error("User not found");
+        }
+
+        //find payment details by user id
+        const paymentDetails = await Payment.findOne({ user: id });
+
+        //send response
+        res.send({
+            success: true,
+            message: "Payment details retrieved successfully",
+            data: paymentDetails,
+        });
+    } catch (error) {
         res.send({
             success: false,
             message: error.message,
@@ -108,9 +119,9 @@ export const createBankAccount = async (req, res) => {
         const { account, userId } = req.body;
 
         if (
+            !account.bank_name ||
+            !account.branch_name ||
             !account.account_number ||
-            !account.currency ||
-            !account.country ||
             !account.account_holder_name ||
             !userId
         ) {
@@ -122,70 +133,18 @@ export const createBankAccount = async (req, res) => {
 
         let bankAccount = paymentDetails.bank;
 
-        // Set the correct object type for bank account
-        account.object = "bank_account";
-
         // If bank account does not exist
         if (!bankAccount) {
-            // Create bank account
-            const response = await stripe.accounts.createExternalAccount(paymentDetails.stripeId, {
-                external_account: {
-                    object: "bank_account", // Set the correct object type
-                    account_holder_name: account.account_holder_name,
-                    account_number: account.account_number,
-                    currency: account.currency,
-                    country: account.country,
-                    routing_number: account.routing_number,
-                },
-            });
-
-            if (response.error) {
-                throw new Error(response.error.message);
-            }
-
             // Create a new bank account document
             bankAccount = await Bank.create(account);
 
             // Update payment details with bank information
             await Payment.findOneAndUpdate({ user: userId }, { bank: bankAccount._id });
 
-            // Update the bank account document with the Stripe ID
-            await Bank.findByIdAndUpdate(bankAccount._id, { stripeId: response.id });
-
             // Update paymentDetails.bank.stripeId
             paymentDetails.bank = bankAccount._id;
-            paymentDetails.bank.stripeId = response.id;
             await paymentDetails.save();
         } else {
-            console.log(paymentDetails);
-            // Delete the existing bank account
-            let response = await stripe.accounts.deleteExternalAccount(
-                paymentDetails.stripeId,
-                paymentDetails.bank.stripeId
-            );
-
-            if (response.error) {
-                throw new Error(response.error.message);
-            }
-
-            // Create a new bank account
-            response = await stripe.accounts.createExternalAccount(paymentDetails.stripeId, {
-                external_account: {
-                    account_holder_name: account.account_holder_name,
-                    object: "bank_account", // Set the correct object type
-                    account_number: account.account_number,
-                    currency: account.currency,
-                    country: account.country,
-                    routing_number: account.routing_number,
-                },
-            });
-
-            if (response.error) {
-                throw new Error(response.error.message);
-            }
-
-            // Update the existing bank account document
-            account.stripeId = response.id;
             await Bank.findByIdAndUpdate(bankAccount._id, account);
         }
 

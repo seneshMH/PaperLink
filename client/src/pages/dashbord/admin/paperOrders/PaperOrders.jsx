@@ -1,5 +1,10 @@
 import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
     Button,
+    List,
+    ListItemText,
     Paper,
     Table,
     TableBody,
@@ -18,10 +23,17 @@ import { useMessage } from "../../../../hooks/message/Message";
 
 import BeenhereIcon from "@mui/icons-material/Beenhere";
 import WebAssetOffIcon from "@mui/icons-material/WebAssetOff";
-import { RefundPaperOrderPayment, ReleasePaymentFromHold } from "../../../../apiCalls/payment";
+import ExpandCircleDownIcon from "@mui/icons-material/ExpandCircleDown";
+import {
+    RefundPaperOrderPayment,
+    ReleasePaymentFromHold,
+    getPaymentDetailsByUserId,
+} from "../../../../apiCalls/payment";
+import { async } from "q";
 
 function PaperOrders() {
     const [orders, setOrders] = useState([]);
+    const [bankDetails, setBankDetails] = useState({});
     const dispatch = useDispatch();
     const message = useMessage();
 
@@ -85,6 +97,23 @@ function PaperOrders() {
         }
     };
 
+    const getBankDetails = async (id) => {
+        try {
+            dispatch(SetLoader(true));
+            const response = await getPaymentDetailsByUserId(id);
+
+            if (response.success) {
+                setBankDetails(response.data.bank);
+            } else {
+                throw new Error(response.message);
+            }
+        } catch (error) {
+            message.error(error.message);
+        } finally {
+            dispatch(SetLoader(false));
+        }
+    };
+
     useEffect(() => {
         getData();
         // eslint-disable-next-line
@@ -108,70 +137,108 @@ function PaperOrders() {
                     </TableHead>
                     <TableBody>
                         {orders?.map((order) => (
-                            <TableRow
-                                key={order._id}
-                                sx={{
-                                    "&:last-child td, &:last-child th": {
-                                        border: 0,
-                                    },
-                                }}
-                            >
-                                <TableCell component="th" scope="row">
-                                    {order._id}
-                                </TableCell>
-                                <TableCell align="right">{order.product.name}</TableCell>
-                                <TableCell align="right">{order.quantity}</TableCell>
-                                <TableCell align="right">{order.price}</TableCell>
-                                <TableCell
-                                    align="right"
-                                    sx={
-                                        order.status === "pending" || order.status === "refunded"
-                                            ? { color: "red" }
-                                            : { color: "green" }
-                                    }
+                            <>
+                                <TableRow
+                                    key={order._id}
+                                    sx={{
+                                        "&:last-child td, &:last-child th": {
+                                            border: 0,
+                                        },
+                                    }}
                                 >
-                                    {order.status.toUpperCase()}
-                                </TableCell>
-                                <TableCell align="right">
-                                    {moment(order.createdAt).format("DD-MM-YYYY hh-mm A")}
-                                </TableCell>
-                                <TableCell align="right">
-                                    <Typography
-                                        color={calDate(order.createdAt) > 0 ? "green" : "red"}
-                                    >
-                                        {calDate(order.createdAt)} Days
-                                    </Typography>
-                                </TableCell>
-                                <TableCell align="right">
-                                    {/* deliver */}
-                                    <Button
-                                        variant="outlined"
-                                        startIcon={<BeenhereIcon />}
-                                        fullWidth
-                                        onClick={() => releasePayment(order._id)}
-                                        disabled={
+                                    <TableCell component="th" scope="row">
+                                        {order._id}
+                                    </TableCell>
+                                    <TableCell align="right">{order.product.name}</TableCell>
+                                    <TableCell align="right">{order.quantity}</TableCell>
+                                    <TableCell align="right">{order.price}</TableCell>
+                                    <TableCell
+                                        align="right"
+                                        sx={
                                             order.status === "pending" ||
-                                            order.status === "completed" ||
                                             order.status === "refunded"
+                                                ? { color: "red" }
+                                                : { color: "green" }
                                         }
                                     >
-                                        Release Payment
-                                    </Button>
-                                    <Button
-                                        variant="outlined"
-                                        color="error"
-                                        startIcon={<WebAssetOffIcon />}
-                                        fullWidth
-                                        onClick={() => refund(order._id)}
-                                        disabled={
-                                            order.status === "completed" ||
-                                            order.status === "refunded"
-                                        }
-                                    >
-                                        Refund
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
+                                        {order.status.toUpperCase()}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        {moment(order.createdAt).format("DD-MM-YYYY hh-mm A")}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <Typography
+                                            color={calDate(order.createdAt) > 0 ? "green" : "red"}
+                                        >
+                                            {calDate(order.createdAt)} Days
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        {/* deliver */}
+                                        <Button
+                                            variant="outlined"
+                                            startIcon={<BeenhereIcon />}
+                                            fullWidth
+                                            onClick={() => releasePayment(order._id)}
+                                            disabled={
+                                                order.status === "pending" ||
+                                                order.status === "completed" ||
+                                                order.status === "refunded"
+                                            }
+                                        >
+                                            Release Payment
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            color="error"
+                                            startIcon={<WebAssetOffIcon />}
+                                            fullWidth
+                                            onClick={() => refund(order._id)}
+                                            disabled={
+                                                order.status === "completed" ||
+                                                order.status === "refunded"
+                                            }
+                                        >
+                                            Refund
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                                {/* <TableRow>
+                                    <TableCell>
+                                        <Accordion>
+                                            {getBankDetails(order.product.seller._id)}
+                                            <AccordionSummary
+                                                expandIcon={<ExpandCircleDownIcon />}
+                                                aria-controls="panel1a-content"
+                                                id="panel1a-header"
+                                            >
+                                                <Typography variant="h6">Buyer Details</Typography>
+                                            </AccordionSummary>
+                                            <AccordionDetails>
+                                                <List>
+                                                    <ListItemText>
+                                                        {" "}
+                                                        Name : {bankDetails.bank_name}
+                                                    </ListItemText>
+                                                    <ListItemText>
+                                                        {" "}
+                                                        Address : {bankDetails.branch_name}
+                                                    </ListItemText>
+                                                    <ListItemText>
+                                                        {" "}
+                                                        E-mail : {bankDetails.account_number}
+                                                    </ListItemText>
+                                                    <ListItemText>
+                                                        {" "}
+                                                        Phone Number :{" "}
+                                                        {bankDetails.account_holder_name}
+                                                    </ListItemText>
+                                                </List>
+                                            </AccordionDetails>
+                                        </Accordion>
+                                    </TableCell>
+                                </TableRow> */}
+                            </>
                         ))}
                     </TableBody>
                 </Table>
