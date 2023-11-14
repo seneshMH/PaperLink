@@ -43,7 +43,7 @@ const server = app.listen(port, () => {
 });
 
 // deployment config
-const path = require("path");
+import path from "path";
 __dirname = path.resolve();
 
 if (process.env.NODE_ENV === "production") {
