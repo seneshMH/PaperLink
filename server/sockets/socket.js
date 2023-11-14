@@ -13,10 +13,10 @@ const setSocket = (io) => {
 export const setupSocketIO = (server) => {
     const io = new Server(server, {
         pingTimeout: 60000,
-        cors: {
-            origin: process.env.PORT,
-            // credentials: true,
-        },
+        // cors: {
+        //     origin: process.env.PORT,
+        //     // credentials: true,
+        // },
     });
 
     io.on("connection", (socket) => {
