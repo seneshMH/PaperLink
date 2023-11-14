@@ -11,13 +11,19 @@ const setSocket = (io) => {
 };
 
 export const setupSocketIO = (server) => {
-    const io = new Server(server, {
-        pingTimeout: 60000,
-        // cors: {
-        //     origin: process.env.PORT,
-        //     // credentials: true,
-        // },
-    });
+    let io;
+
+    process.env.NODE_ENV === "production"
+        ? (io = new Server(server, {
+              pingTimeout: 60000,
+          }))
+        : (io = new Server(server, {
+              pingTimeout: 60000,
+              cors: {
+                  origin: "http://localhost:3000",
+                  // credentials: true,
+              },
+          }));
 
     io.on("connection", (socket) => {
         console.log("connected to socket.io");
