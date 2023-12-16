@@ -2,6 +2,16 @@
 
 PaperLink is a digital platform that connects self-employed paper makers with material suppliers, creating an efficient marketplace for the paper-making industry. The platform is built using the MERN stack, Socket.IO for real-time communication, Material-UI (MUI) for a sleek and responsive user interface, Redux for state management, and Stripe for payment integration.
 
+## Contributors
+
+We would like to thank the following group members for their valuable contributions to the PaperLink project:
+
+-   [Rashmi Konara](https://github.com/RashmiKonara)
+-   [Sanju Maduranga](https://github.com/SanjuMaduranga)
+-   [Ashini Madusha](https://github.com/AshiniMadusha)
+-   [Samodha Malki](https://github.com/SamodhaMalki)
+-   [Umindu Sannasgala](https://github.com/umindu06)
+
 ## Features
 
 -   User Registration:
